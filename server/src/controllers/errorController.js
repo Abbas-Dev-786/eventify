@@ -1,4 +1,5 @@
-const AppError = require("../utils/AppError");
+import { errors } from "@vinejs/vine";
+import AppError from "../utils/AppError.js";
 
 // development error handler
 const sendDevError = (err, res) => {
@@ -15,9 +16,11 @@ const sendDevError = (err, res) => {
 // production error handler
 const sendProdError = (err, res) => {
   if (err.isOperational) {
-    return res
-      .status(err.statusCode)
-      .json({ status: err.status, message: err.message });
+    return res.status(err.statusCode).json({
+      status: err.status,
+      message: err.message,
+      errors: err.errors,
+    });
   } else {
     console.log(err + "💥");
 
@@ -36,10 +39,10 @@ const handleCastError = (err) => {
 
 // DB schema validation error handler
 const handleValidationError = (err) => {
-  const errors = Object.values(err.errors).map((el) => el.message);
+  // const errors = Object.values(err.errors).map((el) => el.message);
 
-  const message = `Invalid input data. ${errors.join(". ")}`;
-  return new AppError(message, 400);
+  // const message = `Invalid input data. ${errors.join(". ")}`;
+  return new AppError(err.message, 400, err.messages);
 };
 
 // duplicate unique field DB error handler
@@ -59,7 +62,7 @@ const handleJWTError = () =>
 const handleJWTExpiredError = () =>
   new AppError("Your token has expired! Please log in again.", 401);
 
-module.exports = function (err, req, res, next) {
+const globalErrorHandler = function (err, req, res, next) {
   err.statusCode ||= 500;
   err.status ||= "error";
 
@@ -70,10 +73,13 @@ module.exports = function (err, req, res, next) {
 
     if (error.name === "CastError") error = handleCastError(error);
     if (error.code === 11000) error = handleDuplicateFieldError(error);
-    if (error.name === "ValidationError") error = handleValidationError(error);
+    if (error instanceof errors.E_VALIDATION_ERROR)
+      error = handleValidationError(error);
     if (error.name === "JsonWebTokenError") error = handleJWTError();
     if (error.name === "TokenExpiredError") error = handleJWTExpiredError();
 
     sendProdError(error, res);
   }
 };
+
+export default globalErrorHandler;

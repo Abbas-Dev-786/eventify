@@ -1,9 +1,10 @@
-const express = require("express");
-const helmet = require("helmet");
-const morgan = require("morgan");
+import express from "express";
+import helmet from "helmet";
+import morgan from "morgan";
 
-const globalErrorHandler = require("./controllers/errorController");
-const AppError = require("./utils/AppError");
+import globalErrorHandler from "./controllers/errorController.js";
+import AppError from "./utils/AppError.js";
+import { router as authRouter } from "./routes/authRoutes.js";
 
 const app = express();
 app.set("trust proxy", true);
@@ -15,11 +16,12 @@ app.use(helmet());
 app.use(morgan("dev"));
 
 // Body parser, reading data from body into req.body
-app.use(express.json({ limit: "16kb" }));
-app.use(express.urlencoded({ extended: true, limit: "16kb" }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: false, limit: "16kb" }));
 
 // API Routes declaration
 const baseRoute = "/api/v1";
+app.use(`${baseRoute}/auth`, authRouter);
 
 // invalid route handler
 app.all("*", (req, _, next) => {
@@ -29,4 +31,4 @@ app.all("*", (req, _, next) => {
 // global error handler
 app.use(globalErrorHandler);
 
-module.exports = app;
+export default app;
